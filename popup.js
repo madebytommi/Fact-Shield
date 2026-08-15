@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const openrouterApiKey = document.getElementById('openrouter-api-key');
     const saveKeyBtn = document.getElementById('save-key-btn');
     const keySaveStatus = document.getElementById('key-save-status');
+    const googleApiKey = document.getElementById('google-api-key');
+    const saveGoogleKeyBtn = document.getElementById('save-google-key-btn');
+    const googleKeySaveStatus = document.getElementById('google-key-save-status');
     const domainInput = document.getElementById('blocked-domain');
     const addDomainBtn = document.getElementById('add-domain-btn');
     const domainList = document.getElementById('domain-list');
@@ -75,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Load initial state
-    chrome.storage.local.get(['isActive', 'recentFlags', 'blockedDomains', 'manualEnabled', 'aiEnabled', 'openrouterApiKey'], (result) => {
+    chrome.storage.local.get(['isActive', 'recentFlags', 'blockedDomains', 'manualEnabled', 'aiEnabled', 'openrouterApiKey', 'googleApiKey'], (result) => {
         // Set toggle state
         const isActive = result.isActive !== false;
         toggleSwitch.checked = isActive;
@@ -92,6 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (openrouterApiKey && result.openrouterApiKey) {
             openrouterApiKey.value = result.openrouterApiKey;
+        }
+        if (googleApiKey && result.googleApiKey) {
+            googleApiKey.value = result.googleApiKey;
         }
 
         // Render flags
@@ -128,6 +134,16 @@ document.addEventListener('DOMContentLoaded', () => {
             chrome.storage.local.set({ openrouterApiKey: key }, () => {
                 keySaveStatus.hidden = false;
                 setTimeout(() => keySaveStatus.hidden = true, 2000);
+            });
+        });
+    }
+
+    if (saveGoogleKeyBtn && googleApiKey) {
+        saveGoogleKeyBtn.addEventListener('click', () => {
+            const key = googleApiKey.value.trim();
+            chrome.storage.local.set({ googleApiKey: key }, () => {
+                googleKeySaveStatus.hidden = false;
+                setTimeout(() => googleKeySaveStatus.hidden = true, 2000);
             });
         });
     }

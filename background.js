@@ -172,79 +172,86 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     // 2. Query Google Fact Check Tools API
-    const params = new URLSearchParams({
-      query: sentence,
-      languageCode: 'en',
-      maxAgeDays: 180,          // look back ~6 months for relevance
-      pageSize: 5               // we only need a few good matches
-    });
+    chrome.storage.local.get(['googleApiKey'], (res) => {
+      if (!res.googleApiKey) {
+        sendResponse({ match: null, error: 'Google Fact Check API key not configured' });
+        return;
+      }
 
-    const url = `${GOOGLE_FACT_CHECK_API}?${params.toString()}&key=AIzaSyCcFqzYpYe61VJGaFevw0wXzDA6ESjt_nI`;
+      const params = new URLSearchParams({
+        query: sentence,
+        languageCode: 'en',
+        maxAgeDays: 180,          // look back ~6 months for relevance
+        pageSize: 5               // we only need a few good matches
+      });
 
-    fetch(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    })
-      .then(response => {
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-        return response.json();
+      const url = `${GOOGLE_FACT_CHECK_API}?${params.toString()}&key=${res.googleApiKey}`;
+
+      fetch(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
       })
-      .then(data => {
-        let bestMatch = null;
+        .then(response => {
+          if (!response.ok) throw new Error(`API error: ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          let bestMatch = null;
 
-        // Look for the strongest negative rating
-        if (data.claims && data.claims.length > 0) {
-          for (const claim of data.claims) {
-            const rating = claim.claimReview?.[0]?.textualRating?.toLowerCase() || '';
-            const isNegative =
-              rating.includes('false') ||
-              rating.includes('misleading') ||
-              rating.includes('mostly false') ||
-              rating.includes('pants on fire') ||
-              rating.includes('inaccurate');
+          // Look for the strongest negative rating
+          if (data.claims && data.claims.length > 0) {
+            for (const claim of data.claims) {
+              const rating = claim.claimReview?.[0]?.textualRating?.toLowerCase() || '';
+              const isNegative =
+                rating.includes('false') ||
+                rating.includes('misleading') ||
+                rating.includes('mostly false') ||
+                rating.includes('pants on fire') ||
+                rating.includes('inaccurate');
 
-            if (isNegative) {
-              const review = claim.claimReview[0];
-              bestMatch = {
-                rating: review.textualRating,
-                explanation: review.title || claim.text || "Claim rated negatively",
-                publisher: review.publisher?.name || "Fact-check source",
-                reviewUrl: review.url,
-                sourceUrl: review.url,
-                originalClaim: claim.text,
-                reason: {
-                  summary: `Matched a ${review.publisher?.name || 'fact-check'} review rated "${review.textualRating}".`,
-                  ruleName: 'Google Fact Check API match',
-                  score: isNegative ? 0.9 : 0.5,
-                  matchedTerms: claim.text ? [claim.text] : [],
-                  triggers: [
-                    {
-                      label: 'Matched claim',
-                      value: claim.text || sentence,
-                      weight: isNegative ? 0.9 : 0.5
-                    },
-                    {
-                      label: 'Fact-check rating',
-                      value: review.textualRating
-                    }
-                  ]
-                }
-              };
-              break; // take the first strong negative match
+              if (isNegative) {
+                const review = claim.claimReview[0];
+                bestMatch = {
+                  rating: review.textualRating,
+                  explanation: review.title || claim.text || "Claim rated negatively",
+                  publisher: review.publisher?.name || "Fact-check source",
+                  reviewUrl: review.url,
+                  sourceUrl: review.url,
+                  originalClaim: claim.text,
+                  reason: {
+                    summary: `Matched a ${review.publisher?.name || 'fact-check'} review rated "${review.textualRating}".`,
+                    ruleName: 'Google Fact Check API match',
+                    score: isNegative ? 0.9 : 0.5,
+                    matchedTerms: claim.text ? [claim.text] : [],
+                    triggers: [
+                      {
+                        label: 'Matched claim',
+                        value: claim.text || sentence,
+                        weight: isNegative ? 0.9 : 0.5
+                      },
+                      {
+                        label: 'Fact-check rating',
+                        value: review.textualRating
+                      }
+                    ]
+                  }
+                };
+                break; // take the first strong negative match
+              }
             }
           }
-        }
 
-        // Cache the result (even if no match) for ~10 minutes
-        claimCache.set(cacheKey, bestMatch);
-        setTimeout(() => claimCache.delete(cacheKey), 10 * 60 * 1000);
+          // Cache the result (even if no match) for ~10 minutes
+          claimCache.set(cacheKey, bestMatch);
+          setTimeout(() => claimCache.delete(cacheKey), 10 * 60 * 1000);
 
-        sendResponse({ match: bestMatch });
-      })
-      .catch(err => {
-        console.error("Fact check API error:", err);
-        sendResponse({ match: null, error: err.message });
-      });
+          sendResponse({ match: bestMatch });
+        })
+        .catch(err => {
+          console.error("Fact check API error:", err);
+          sendResponse({ match: null, error: err.message });
+        });
+    });
 
     return true; // keep channel open for async fetch
   }
