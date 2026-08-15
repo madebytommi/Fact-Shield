@@ -383,7 +383,7 @@ function refreshPageStateIfNeeded() {
     loggedClaimKeys.clear();
 }
 
-function splitIntoSentences(text) {
+function splitIntoSentences(text, minimumLength = MIN_SENTENCE_LENGTH) {
     const normalizedText = text
         .replace(/\s+/g, " ")
         .trim();
@@ -397,7 +397,7 @@ function splitIntoSentences(text) {
         .replace(/\b(?:[A-Za-z]\.){2,}/g, (match) => match.replace(/\./g, "__DOT__"))
         .replace(/\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Mt|Gen|Sen|Rep|Gov|Lt|Col|Capt|Cmdr|Sgt|Adm|Maj|Ave|Blvd|Rd|No|Nos|Dept|Univ|Inc|Ltd|Co|Corp|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|etc|vs|e\.g|i\.e)\./gi, (match) => match.replace(/\./g, "__DOT__"))
         .replace(/(\d)\.(\d)/g, "$1__DECIMAL__$2")
-        .replace(/(^|\s)(\d+)\.(?=\s+[A-Z])/g, "$1$2__LIST__");
+        .replace(/(^|\s)(\d{1,3})\.(?=\s+[A-Z])/g, "$1$2__LIST__");
 
     const fragments = protectedText.match(/.+?(?:[.!?]+(?=(?:["')\]]*\s+|$))|$)/g) || [];
 
@@ -408,7 +408,7 @@ function splitIntoSentences(text) {
             .replace(/__LIST__/g, ".")
             .replace(/__DOT__/g, ".")
             .trim())
-        .filter((sentence) => sentence.length >= MIN_SENTENCE_LENGTH);
+        .filter((sentence) => sentence.length >= minimumLength);
 }
 
 function analyzeHeuristicSignals(text) {
@@ -818,17 +818,20 @@ function evaluateNode(node, candidates) {
     }
 
     const text = node.nodeValue.trim();
-    if (text.length < MIN_SENTENCE_LENGTH) return;
+    if (!text) return;
 
-    // Fast path: check if any sentence matches a known local pattern
+    // Cache rules get an eligibility pass even for short claims. Generic claims still
+    // keep the normal minimum-length requirement below.
     let localCacheHit = false;
-    const sentences = splitIntoSentences(text);
-    for (const sentence of sentences) {
+    const cacheSentences = splitIntoSentences(text, 1);
+    for (const sentence of cacheSentences) {
         if (hasLocalCacheMatch(sentence)) {
             localCacheHit = true;
             break;
         }
     }
+
+    if (text.length < MIN_SENTENCE_LENGTH && !localCacheHit) return;
 
     const analysis = analyzeHeuristicSignals(text);
     const score = analysis.score;
@@ -847,7 +850,9 @@ function processClaim(textNode, fullText) {
     const parentEl = textNode.parentNode;
     if (!parentEl) return;
 
-    const sentences = splitIntoSentences(fullText);
+    // Preserve short sentences here so known local-cache matches can be handled.
+    // The generic/API path still enforces MIN_SENTENCE_LENGTH below.
+    const sentences = splitIntoSentences(fullText, 1);
 
     for (const sentence of sentences) {
         if (highlightsApplied >= MAX_HIGHLIGHTS_PER_PAGE) {
@@ -878,6 +883,10 @@ function processClaim(textNode, fullText) {
         if (localMatch) {
             highlightClaim(parentEl, sentence, localMatch, "local", claimKey);
             continue; // we highlighted — move to next sentence
+        }
+
+        if (sentence.length < MIN_SENTENCE_LENGTH) {
+            continue; // short non-cache claims remain outside automatic generic/API scanning
         }
 
         if (analysis.score < CLAIM_SCORE_THRESHOLD) {
@@ -988,6 +997,29 @@ function checkLocalCache(sentence, analysis) {
     return bestMatch;
 }
 
+function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findWhitespaceTolerantTextMatch(content, matchText) {
+    const normalizedMatch = String(matchText || "").trim();
+    if (!normalizedMatch) return null;
+
+    const pattern = normalizedMatch
+        .split(/\s+/)
+        .map(escapeRegExp)
+        .join("\\s+");
+    const match = String(content || "").match(new RegExp(pattern));
+
+    if (!match || typeof match.index !== "number") return null;
+
+    return {
+        index: match.index,
+        length: match[0].length,
+        text: match[0]
+    };
+}
+
 // Apply highlight + store data for tooltip
 function highlightClaim(parentEl, matchText, matchData, sourceType, claimKey = normalizeClaimKey(matchText)) {
     if (!parentEl || !parentEl.isConnected) return;
@@ -997,14 +1029,19 @@ function highlightClaim(parentEl, matchText, matchData, sourceType, claimKey = n
 
     let targetNode = null;
     let idx = -1;
+    let matchedLength = 0;
+    let matchedContent = "";
     let content = "";
 
     for (const child of Array.from(parentEl.childNodes)) {
         if (child.nodeType === Node.TEXT_NODE) {
             content = child.nodeValue;
-            idx = content.indexOf(matchText);
-            if (idx !== -1) {
+            const match = findWhitespaceTolerantTextMatch(content, matchText);
+            if (match) {
                 targetNode = child;
+                idx = match.index;
+                matchedLength = match.length;
+                matchedContent = match.text;
                 break;
             }
         }
@@ -1013,14 +1050,14 @@ function highlightClaim(parentEl, matchText, matchData, sourceType, claimKey = n
     if (!targetNode) return;
 
     const before = document.createTextNode(content.slice(0, idx));
-    const after = document.createTextNode(content.slice(idx + matchText.length));
+    const after = document.createTextNode(content.slice(idx + matchedLength));
 
     const span = document.createElement("span");
 
     const flagPayload = buildFlagPayload(matchText, matchData, sourceType);
     const isAIDomain = isKnownAIDomain();
     span.className = `factshield-highlight ${isAIDomain ? 'mild' : ''} ${sourceType === "api" && matchData.rating?.includes("False") ? "strong-warning" : ""}`;
-    span.textContent = matchText;
+    span.textContent = matchedContent;
 
     // Store for tooltip
     span.dataset.fsClaim = JSON.stringify(flagPayload);
