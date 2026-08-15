@@ -1,0 +1,87 @@
+<!-- popup.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FactShield Free</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <img src="icons/icon48.svg" class="logo" alt="FactShield Logo">
+    <h1>FactShield</h1>
+  </div>
+
+  <div class="status-panel">
+    <div class="status-text" id="status-label">Active</div>
+    <label class="switch">
+      <input type="checkbox" id="toggle-extension" checked>
+      <span class="slider round"></span>
+    </label>
+  </div>
+
+  <div class="section">
+    <h2>Recent Flags</h2>
+    <p class="section-note">Each flag now shows the matching rule, score, and the exact trigger that caused it.</p>
+    <div class="flag-list" id="recent-flags">
+      <div class="empty-state">No recent flags. Keep browsing safely!</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Settings</h2>
+    <div class="settings-group">
+      <label class="switch-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+        <span style="font-weight: 500;">Enable manual checker (Selection/Right-click)</span>
+        <label class="switch">
+          <input type="checkbox" id="toggle-manual" checked>
+          <span class="slider round"></span>
+        </label>
+      </label>
+      <!-- NEW: OpenRouter AI Deep Analysis -->
+      <label class="switch-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+        <span style="font-weight: 500;">Enable AI Fact-Checker (OpenRouter)</span>
+        <label class="switch">
+          <input type="checkbox" id="toggle-ai" checked>
+          <span class="slider round"></span>
+        </label>
+      </label>
+      <div id="ai-settings-panel" style="margin-bottom: 20px;">
+        <label for="openrouter-api-key" style="font-size: 12px; color: #666;">OpenRouter API Key:</label>
+        <div class="input-row">
+          <input type="password" id="openrouter-api-key" placeholder="sk-or-v1-...">
+          <button id="save-key-btn">Save</button>
+        </div>
+        <div id="key-save-status" style="font-size: 11px; color: #1e88e5; margin-top: 4px;" hidden>Key saved.</div>
+      </div>
+      <label for="blocked-domain">Add domain to block/warn list:</label>
+      <div class="input-row">
+        <input type="text" id="blocked-domain" placeholder="example.com">
+        <button id="add-domain-btn">Add</button>
+      </div>
+      <ul id="domain-list"></ul>
+    </div>
+  </div>
+
+  <div class="section daily-digest">
+    <h2>Daily Fact-Check Digest</h2>
+    <div class="digest-item">
+      <strong>Deepfakes on the Rise</strong>
+      <p>Experts warn about AI-generated audio confusing voters.</p>
+      <a href="https://www.reuters.com/fact-check/" target="_blank">Read more on Reuters</a>
+    </div>
+    <div class="digest-item">
+      <strong>Misattributed Quotes</strong>
+      <p>Always verify quotes attributed to historical figures on social media.</p>
+      <a href="https://www.snopes.com/" target="_blank">Read more on Snopes</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    FactShield Free • Privacy First • 100% Local
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

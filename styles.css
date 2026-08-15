@@ -1,0 +1,369 @@
+/* factshield highlights */
+.factshield-highlight {
+  background-color: rgba(255, 204, 0, 0.4);
+  border-bottom: 2px dashed #ff9900;
+  cursor: help;
+  position: relative;
+  color: inherit;
+  transition: background-color 0.2s;
+}
+
+.factshield-highlight:hover {
+  background-color: rgba(255, 204, 0, 0.7);
+}
+
+/* Tooltip container */
+#factshield-tooltip {
+  position: absolute;
+  z-index: 2147483647;
+  /* Maximum z-index to stay on top */
+  width: 300px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #333;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+#factshield-tooltip .fs-tooltip-header {
+  font-weight: bold;
+  color: #d9534f;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 4px;
+}
+
+#factshield-tooltip .fs-tooltip-body {
+  margin-bottom: 10px;
+}
+
+#factshield-tooltip .fs-tooltip-reason-block {
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #f6f8fb;
+  border-radius: 6px;
+}
+
+#factshield-tooltip .fs-tooltip-reason-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4a5568;
+  margin-bottom: 4px;
+}
+
+#factshield-tooltip .fs-tooltip-score {
+  font-size: 12px;
+  color: #2f855a;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+#factshield-tooltip .fs-tooltip-reason-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+#factshield-tooltip .fs-tooltip-reason-list li {
+  margin: 4px 0;
+}
+
+#factshield-tooltip .fs-tooltip-actions {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+#factshield-tooltip .fs-tooltip-search-btn {
+  width: 100%;
+  padding: 9px 12px;
+  background: #1e88e5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 6px rgba(30, 136, 229, 0.2);
+}
+
+#factshield-tooltip .fs-tooltip-search-btn:hover {
+  background: #1565c0;
+  box-shadow: 0 4px 10px rgba(21, 101, 192, 0.28);
+}
+
+#factshield-tooltip .fs-tooltip-search-btn:focus-visible {
+  outline: 2px solid rgba(30, 136, 229, 0.4);
+  outline-offset: 2px;
+}
+
+#factshield-tooltip .fs-tooltip-search-note {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #607080;
+}
+
+#factshield-tooltip .fs-tooltip-search-status {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e88e5;
+}
+
+#factshield-tooltip .fs-tooltip-ignore-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  color: #d32f2f;
+  border: 1px solid rgba(211, 47, 47, 0.45);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+#factshield-tooltip .fs-tooltip-ignore-btn:hover {
+  background: #d32f2f;
+  color: white;
+  border-color: #d32f2f;
+}
+
+#factshield-tooltip .fs-tooltip-success {
+  color: #1f7a43;
+}
+
+#factshield-tooltip .fs-tooltip-ignored-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #edf9f0;
+  color: #1f7a43;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+#factshield-tooltip .fs-sources-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+#factshield-tooltip a {
+  color: #0066cc;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+#factshield-tooltip a:hover {
+  text-decoration: underline;
+}
+
+@media (prefers-color-scheme: dark) {
+  #factshield-tooltip {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #f1f1f1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+
+  #factshield-tooltip .fs-tooltip-header {
+    color: #ff6b6b;
+    border-color: #444;
+  }
+
+  #factshield-tooltip .fs-tooltip-reason-block {
+    background: #313744;
+  }
+
+  #factshield-tooltip .fs-tooltip-reason-title {
+    color: #d7deea;
+  }
+
+  #factshield-tooltip .fs-tooltip-score {
+    color: #8fe3b4;
+  }
+
+  #factshield-tooltip .fs-tooltip-search-btn {
+    background: #4da6ff;
+    color: #102032;
+    box-shadow: 0 2px 8px rgba(77, 166, 255, 0.22);
+  }
+
+  #factshield-tooltip .fs-tooltip-search-btn:hover {
+    background: #76bbff;
+    box-shadow: 0 4px 12px rgba(118, 187, 255, 0.28);
+  }
+
+  #factshield-tooltip .fs-tooltip-search-note {
+    color: #b7c4d3;
+  }
+
+  #factshield-tooltip .fs-tooltip-search-status {
+    color: #8ecbff;
+  }
+
+  #factshield-tooltip .fs-tooltip-ignore-btn {
+    color: #ffb3b3;
+    border-color: rgba(255, 107, 107, 0.45);
+  }
+
+  #factshield-tooltip .fs-tooltip-ignore-btn:hover {
+    background: #ff6b6b;
+    border-color: #ff6b6b;
+    color: #1f1f1f;
+  }
+
+  #factshield-tooltip .fs-tooltip-success,
+  #factshield-tooltip .fs-tooltip-ignored-badge {
+    color: #8fe3b4;
+  }
+
+  #factshield-tooltip .fs-tooltip-ignored-badge {
+    background: #244233;
+  }
+
+  #factshield-tooltip .fs-sources-title {
+    color: #aaa;
+  }
+
+  #factshield-tooltip a {
+    color: #4da6ff;
+  }
+}
+
+.factshield-highlight {
+  background-color: rgba(255, 215, 0, 0.25);
+  /* light yellow */
+  border-bottom: 1.5px dashed #f0c000;
+  cursor: help;
+}
+
+.factshield-highlight.strong-warning {
+  background-color: rgba(255, 99, 71, 0.3);
+  /* tomato red tint for confirmed false */
+  border-bottom: 2px solid #ff6347;
+}
+
+.fs-tooltip-header.strong {
+  color: #d32f2f;
+  font-weight: bold;
+}
+
+.factshield-highlight.mild {
+  background-color: rgba(255, 215, 0, 0.12);
+  /* very light */
+  border-bottom: 1px dotted #f0c000;
+}
+
+/* === NEW: MANUAL CHECKER SECTION === */
+.factshield-manual-highlight {
+  background-color: rgba(0, 122, 255, 0.25);
+  border-bottom: 2px dashed #007aff;
+  position: relative;
+  cursor: help;
+  color: inherit;
+  transition: background-color 0.2s;
+}
+
+.factshield-manual-highlight:hover {
+  background-color: rgba(0, 122, 255, 0.4);
+}
+
+.fs-manual-floating-btn {
+  position: absolute;
+  z-index: 2147483647;
+  background: #007aff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+  pointer-events: auto;
+}
+
+.fs-manual-floating-btn:hover {
+  background: #005bb5;
+  box-shadow: 0 4px 14px rgba(0, 91, 181, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  .fs-manual-floating-btn {
+    background: #006ee6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+  .fs-manual-floating-btn:hover {
+    background: #3395ff;
+  }
+}
+
+/* === NEW: OpenRouter AI Deep Analysis === */
+.fs-ai-btn {
+  width: 100%;
+  padding: 8px 12px;
+  margin-top: 8px;
+  background: #f0f4f8;
+  color: #37474f;
+  border: 1px solid #cfd8dc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+.fs-ai-btn:hover {
+  background: #e1e8ed;
+  border-color: #b0bec5;
+}
+.fs-ai-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.fs-ai-result-panel {
+  margin-top: 10px;
+  padding: 10px;
+  background: #edf2f7;
+  border-radius: 6px;
+  border-left: 3px solid #4a5568;
+  font-size: 12px;
+  color: #2d3748;
+}
+.fs-ai-verdict-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+@media (prefers-color-scheme: dark) {
+  .fs-ai-btn {
+    background: #313744;
+    color: #e2e8f0;
+    border-color: #4a5568;
+  }
+  .fs-ai-btn:hover {
+    background: #4a5568;
+  }
+  .fs-ai-result-panel {
+    background: #2d3748;
+    color: #e2e8f0;
+    border-left-color: #718096;
+  }
+}
