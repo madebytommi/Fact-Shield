@@ -185,11 +185,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         pageSize: 5               // we only need a few good matches
       });
 
-      const url = `${GOOGLE_FACT_CHECK_API}?${params.toString()}&key=${res.googleApiKey}`;
+      const url = `${GOOGLE_FACT_CHECK_API}?${params.toString()}`;
 
       fetch(url, {
         method: 'GET',
-        headers: { 'Accept': 'application/json' }
+        headers: { 
+          'Accept': 'application/json',
+          'x-goog-api-key': res.googleApiKey
+        }
       })
         .then(response => {
           if (!response.ok) throw new Error(`API error: ${response.status}`);

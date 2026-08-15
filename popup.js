@@ -8,9 +8,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const openrouterApiKey = document.getElementById('openrouter-api-key');
     const saveKeyBtn = document.getElementById('save-key-btn');
     const keySaveStatus = document.getElementById('key-save-status');
+    const openrouterSavedStatus = document.getElementById('openrouter-saved-status');
+    const removeOpenrouterKeyBtn = document.getElementById('remove-openrouter-key-btn');
+    const openrouterApiLabel = document.getElementById('openrouter-api-label');
     const googleApiKey = document.getElementById('google-api-key');
     const saveGoogleKeyBtn = document.getElementById('save-google-key-btn');
     const googleKeySaveStatus = document.getElementById('google-key-save-status');
+    const googleSavedStatus = document.getElementById('google-saved-status');
+    const removeGoogleKeyBtn = document.getElementById('remove-google-key-btn');
+    const googleApiLabel = document.getElementById('google-api-label');
     const domainInput = document.getElementById('blocked-domain');
     const addDomainBtn = document.getElementById('add-domain-btn');
     const domainList = document.getElementById('domain-list');
@@ -77,6 +83,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<div class="flag-triggers">${triggerItems}${matchedTerms}</div>`;
     }
 
+    function updateApiKeyUi(hasKey, keyType) {
+        if (keyType === 'openrouter') {
+            if (hasKey) {
+                if (openrouterSavedStatus) openrouterSavedStatus.style.display = 'block';
+                if (openrouterApiLabel) openrouterApiLabel.textContent = 'Update OpenRouter API Key:';
+            } else {
+                if (openrouterSavedStatus) openrouterSavedStatus.style.display = 'none';
+                if (openrouterApiLabel) openrouterApiLabel.textContent = 'OpenRouter API Key:';
+            }
+            if (openrouterApiKey) openrouterApiKey.value = ''; // Never show the key
+        } else if (keyType === 'google') {
+            if (hasKey) {
+                if (googleSavedStatus) googleSavedStatus.style.display = 'block';
+                if (googleApiLabel) googleApiLabel.textContent = 'Update Google Fact Check API Key:';
+            } else {
+                if (googleSavedStatus) googleSavedStatus.style.display = 'none';
+                if (googleApiLabel) googleApiLabel.textContent = 'Google Fact Check API Key:';
+            }
+            if (googleApiKey) googleApiKey.value = ''; // Never show the key
+        }
+    }
+
     // Load initial state
     chrome.storage.local.get(['isActive', 'recentFlags', 'blockedDomains', 'manualEnabled', 'aiEnabled', 'openrouterApiKey', 'googleApiKey'], (result) => {
         // Set toggle state
@@ -93,11 +121,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (toggleAi) {
             toggleAi.checked = result.aiEnabled !== false;
         }
-        if (openrouterApiKey && result.openrouterApiKey) {
-            openrouterApiKey.value = result.openrouterApiKey;
+        if (openrouterApiKey) {
+            updateApiKeyUi(!!result.openrouterApiKey, 'openrouter');
         }
-        if (googleApiKey && result.googleApiKey) {
-            googleApiKey.value = result.googleApiKey;
+        if (googleApiKey) {
+            updateApiKeyUi(!!result.googleApiKey, 'google');
         }
 
         // Render flags
@@ -131,9 +159,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saveKeyBtn && openrouterApiKey) {
         saveKeyBtn.addEventListener('click', () => {
             const key = openrouterApiKey.value.trim();
+            if (!key) return; // don't save empty key
             chrome.storage.local.set({ openrouterApiKey: key }, () => {
                 keySaveStatus.hidden = false;
                 setTimeout(() => keySaveStatus.hidden = true, 2000);
+                updateApiKeyUi(true, 'openrouter');
+            });
+        });
+    }
+
+    if (removeOpenrouterKeyBtn) {
+        removeOpenrouterKeyBtn.addEventListener('click', () => {
+            chrome.storage.local.remove(['openrouterApiKey'], () => {
+                updateApiKeyUi(false, 'openrouter');
             });
         });
     }
@@ -141,9 +179,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saveGoogleKeyBtn && googleApiKey) {
         saveGoogleKeyBtn.addEventListener('click', () => {
             const key = googleApiKey.value.trim();
+            if (!key) return; // don't save empty key
             chrome.storage.local.set({ googleApiKey: key }, () => {
                 googleKeySaveStatus.hidden = false;
                 setTimeout(() => googleKeySaveStatus.hidden = true, 2000);
+                updateApiKeyUi(true, 'google');
+            });
+        });
+    }
+
+    if (removeGoogleKeyBtn) {
+        removeGoogleKeyBtn.addEventListener('click', () => {
+            chrome.storage.local.remove(['googleApiKey'], () => {
+                updateApiKeyUi(false, 'google');
             });
         });
     }
