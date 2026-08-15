@@ -628,14 +628,25 @@ function init() {
             chrome.storage.local.get(['manualEnabled', 'aiEnabled'], (res) => { // NEW: OpenRouter AI Deep Analysis config
                 manualEnabled = res.manualEnabled !== false;
                 window.fsAiEnabled = res.aiEnabled !== false; // expose globally
-            });
 
-            if (isBlocked) {
-                clearBadge();
-                showBlockedBanner();
-            } else if (!isActive) {
-                clearBadge();
-            }
+                if (isBlocked) {
+                    clearBadge();
+                    showBlockedBanner();
+                } else if (!isActive) {
+                    clearBadge();
+                } else {
+                    // Start automatic scanner
+                    if (document.readyState === "loading") {
+                        document.addEventListener("DOMContentLoaded", () => {
+                            scanDocument([document.body]);
+                            setupObserver();
+                        });
+                    } else {
+                        scanDocument([document.body]);
+                        setupObserver();
+                    }
+                }
+            });
         });
 
         if (!requestedStatus && !isActive) {
@@ -696,30 +707,32 @@ function scanDocument(nodesToScan) {
     if (isScanning || highlightsApplied >= MAX_HIGHLIGHTS_PER_PAGE) return;
     isScanning = true;
 
-    const candidates = [];
+    try {
+        const candidates = [];
 
-    nodesToScan.forEach(rootNode => {
-        if (!rootNode.parentNode) return;
+        nodesToScan.forEach(rootNode => {
+            if (!rootNode.parentNode) return;
 
-        if (rootNode.nodeType === Node.TEXT_NODE) {
-            evaluateNode(rootNode, candidates);
-        } else if (rootNode.nodeType === Node.ELEMENT_NODE) {
-            const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT, null, false);
-            let node;
-            while ((node = walker.nextNode())) {
-                evaluateNode(node, candidates);
+            if (rootNode.nodeType === Node.TEXT_NODE) {
+                evaluateNode(rootNode, candidates);
+            } else if (rootNode.nodeType === Node.ELEMENT_NODE) {
+                const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT, null, false);
+                let node;
+                while ((node = walker.nextNode())) {
+                    evaluateNode(node, candidates);
+                }
             }
-        }
-    });
+        });
 
-    // Sort by score descending, take top N
-    candidates.sort((a, b) => b.score - a.score);
-    const toProcess = candidates.slice(0, MAX_HIGHLIGHTS_PER_PAGE - highlightsApplied);
+        // Sort by score descending, take top N
+        candidates.sort((a, b) => b.score - a.score);
+        const toProcess = candidates.slice(0, MAX_HIGHLIGHTS_PER_PAGE - highlightsApplied);
 
-    toProcess.forEach(({ node, text }) => processClaim(node, text));
-
-    isScanning = false;
-    queueBadgeUpdate();
+        toProcess.forEach(({ node, text }) => processClaim(node, text));
+    } finally {
+        isScanning = false;
+        queueBadgeUpdate();
+    }
 }
 
 function evaluateNode(node, candidates) {
@@ -747,6 +760,9 @@ function evaluateNode(node, candidates) {
 // Process one text node: split sentences → skip meta → check local → optional API → highlight
 function processClaim(textNode, fullText) {
     if (highlightsApplied >= MAX_HIGHLIGHTS_PER_PAGE) return;
+
+    const parentEl = textNode.parentNode;
+    if (!parentEl) return;
 
     const sentences = splitIntoSentences(fullText);
 
@@ -777,7 +793,7 @@ function processClaim(textNode, fullText) {
 
         const localMatch = checkLocalCache(sentence, analysis);
         if (localMatch) {
-            highlightClaim(textNode, sentence, localMatch, "local", claimKey);
+            highlightClaim(parentEl, sentence, localMatch, "local", claimKey);
             continue; // we highlighted — move to next sentence
         }
 
@@ -785,17 +801,17 @@ function processClaim(textNode, fullText) {
         const sent = sendRuntimeMessage({ action: "checkClaim", sentence }, (response) => {
             if (response?.match) {
                 // API found something — highlight with API data
-                highlightClaim(textNode, sentence, response.match, "api", claimKey);
+                highlightClaim(parentEl, sentence, response.match, "api", claimKey);
             } else {
                 // No specific match → gentle generic warning
                 const generic = buildHeuristicMatch(sentence, analysis);
-                highlightClaim(textNode, sentence, generic, "generic", claimKey);
+                highlightClaim(parentEl, sentence, generic, "generic", claimKey);
             }
         });
 
         if (!sent) {
             const generic = buildHeuristicMatch(sentence, analysis);
-            highlightClaim(textNode, sentence, generic, "generic", claimKey);
+            highlightClaim(parentEl, sentence, generic, "generic", claimKey);
         }
     }
 }
@@ -870,16 +886,28 @@ function checkLocalCache(sentence, analysis) {
 }
 
 // Apply highlight + store data for tooltip
-function highlightClaim(textNode, matchText, matchData, sourceType, claimKey = normalizeClaimKey(matchText)) {
-    const parent = textNode.parentNode;
-    if (!parent) return;
+function highlightClaim(parentEl, matchText, matchData, sourceType, claimKey = normalizeClaimKey(matchText)) {
+    if (!parentEl || !parentEl.isConnected) return;
 
     if (!claimKey || highlightsApplied >= MAX_HIGHLIGHTS_PER_PAGE) return;
     if (getIgnoredClaimsSet().has(claimKey)) return;
 
-    const content = textNode.nodeValue;
-    const idx = content.indexOf(matchText);
-    if (idx === -1) return;
+    let targetNode = null;
+    let idx = -1;
+    let content = "";
+
+    for (const child of Array.from(parentEl.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) {
+            content = child.nodeValue;
+            idx = content.indexOf(matchText);
+            if (idx !== -1) {
+                targetNode = child;
+                break;
+            }
+        }
+    }
+
+    if (!targetNode) return;
 
     const before = document.createTextNode(content.slice(0, idx));
     const after = document.createTextNode(content.slice(idx + matchText.length));
@@ -897,10 +925,10 @@ function highlightClaim(textNode, matchText, matchData, sourceType, claimKey = n
     span.addEventListener("mouseenter", showTooltip);
     span.addEventListener("mouseleave", hideTooltip);
 
-    parent.insertBefore(before, textNode);
-    parent.insertBefore(span, textNode);
-    parent.insertBefore(after, textNode);
-    parent.removeChild(textNode);
+    parentEl.insertBefore(before, targetNode);
+    parentEl.insertBefore(span, targetNode);
+    parentEl.insertBefore(after, targetNode);
+    parentEl.removeChild(targetNode);
 
     highlightsApplied++;
     claimCount++;
