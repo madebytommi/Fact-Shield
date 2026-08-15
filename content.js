@@ -228,10 +228,12 @@ function showIgnoredConfirmation() {
     `;
 
     clearTimeout(window.fsTooltipHide);
-    window.fsTooltipHide = setTimeout(() => {
+    clearTimeout(window.fsIgnoredConfirmationTimeout);
+    window.fsIgnoredConfirmationTimeout = setTimeout(() => {
         if (tooltip) {
             tooltip.style.display = "none";
         }
+        window.fsIgnoredConfirmationTimeout = null;
     }, 3000);
 }
 
@@ -895,6 +897,11 @@ function processClaim(textNode, fullText) {
 
         // Send to background for Google Fact Check API
         const sent = sendRuntimeMessage({ action: "checkClaim", sentence }, (response) => {
+            if (!isActive || isBlocked) {
+                processedClaimKeys.delete(claimKey);
+                return;
+            }
+
             if (response?.match) {
                 // API found something — highlight with API data
                 highlightClaim(parentEl, sentence, response.match, "api", claimKey);
@@ -1023,6 +1030,7 @@ function findWhitespaceTolerantTextMatch(content, matchText) {
 // Apply highlight + store data for tooltip
 function highlightClaim(parentEl, matchText, matchData, sourceType, claimKey = normalizeClaimKey(matchText)) {
     if (!parentEl || !parentEl.isConnected) return;
+    if (!isActive || isBlocked) return;
 
     if (!claimKey || highlightsApplied >= MAX_HIGHLIGHTS_PER_PAGE) return;
     if (getIgnoredClaimsSet().has(claimKey)) return;
@@ -1092,6 +1100,9 @@ function highlightClaim(parentEl, matchText, matchData, sourceType, claimKey = n
 
 // Tooltip rendering
 function showTooltip(e) {
+    clearTimeout(window.fsIgnoredConfirmationTimeout);
+    window.fsIgnoredConfirmationTimeout = null;
+
     let target = null;
     if (e.target && e.target.closest) {
         target = e.target.closest(".factshield-highlight");
@@ -1394,6 +1405,14 @@ function setManualTempHighlight(range, originalText, sentence) {
 }
 // === END MANUAL CHECKER SECTION ===
 
+function centerTooltip() {
+    if (!tooltip || tooltip.style.display === "none") return;
+
+    const tooltipRect = tooltip.getBoundingClientRect();
+    tooltip.style.top = `${window.scrollY + (window.innerHeight / 2) - (tooltipRect.height / 2)}px`;
+    tooltip.style.left = `${window.scrollX + (window.innerWidth / 2) - (tooltipRect.width / 2)}px`;
+}
+
 // NEW: OpenRouter AI Deep Analysis
 function handleAIFactCheck(sentence) {
     const aiBtn = tooltip.querySelector("#fs-ai-btn");
@@ -1412,8 +1431,8 @@ function handleAIFactCheck(sentence) {
 
         if (response?.error) {
             container.innerHTML = `<div class="fs-ai-result-panel" style="color:#d32f2f;">${response.error}</div>`;
-            // Re-adjust tooltip constraints
-            showTooltip({ target: activeHighlightSpan, forceCenter: true });
+            // Re-adjust tooltip constraints without rebuilding its contents.
+            centerTooltip();
             return;
         }
 
@@ -1430,10 +1449,11 @@ function handleAIFactCheck(sentence) {
                     ${sourcesMarkup}
                 </div>
             `;
-            // Adjust position in case the tooltip height expanded
-            showTooltip({ target: activeHighlightSpan, forceCenter: true });
+            // Adjust position in case the tooltip height expanded without rerendering it.
+            centerTooltip();
         } else {
             container.innerHTML = `<div class="fs-ai-result-panel" style="color:#d32f2f;">Failed to get AI analysis.</div>`;
+            centerTooltip();
         }
     });
 }
