@@ -5,7 +5,9 @@
 console.log("FactShield Free: Claim Highlighter loaded.");
 
 let isActive = true;
+let isBlocked = false;
 let isScanning = false;
+let pageObserver = null;
 const CHECK_DELAY_MS = 600;       // debounce
 const MAX_HIGHLIGHTS_PER_PAGE = 15;
 const CLAIM_SCORE_THRESHOLD = 2.5;
@@ -604,6 +606,58 @@ function sendRuntimeMessage(message, callback) {
 }
 
 // Init once
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'local') return;
+
+    let stateChanged = false;
+    let oldIsActive = isActive;
+    let oldIsBlocked = isBlocked;
+
+    if (changes.isActive !== undefined) {
+        const newlyActive = changes.isActive.newValue;
+        if (newlyActive !== isActive) {
+            isActive = newlyActive;
+            stateChanged = true;
+        }
+    }
+
+    if (changes.blockedDomains !== undefined) {
+        const hostname = window.location.hostname;
+        const newBlockedList = changes.blockedDomains.newValue || [];
+        const newlyBlocked = newBlockedList.some(domain => hostname.includes(domain));
+        if (newlyBlocked !== isBlocked) {
+            isBlocked = newlyBlocked;
+            stateChanged = true;
+        }
+    }
+
+    if (!stateChanged) return;
+
+    // Handle Transitions
+    if (isBlocked) {
+        // Blocked overrides everything
+        stopObserver();
+        clearBadge();
+        showBlockedBanner();
+    } else {
+        // Unblocked
+        removeBlockedBanner();
+        
+        if (!isActive) {
+            // Disabled
+            stopObserver();
+            clearBadge();
+        } else {
+            // Active & Unblocked
+            // Only scan if we transitioned from disabled or blocked
+            if (!oldIsActive || oldIsBlocked) {
+                scanDocument([document.body]);
+                setupObserver();
+            }
+        }
+    }
+});
+
 function init() {
     tooltip = document.getElementById("factshield-tooltip");
     if (!tooltip) {
@@ -615,7 +669,6 @@ function init() {
 
         loadIgnoredClaims(() => {
         const requestedStatus = sendRuntimeMessage({ action: "getStatus" }, (response) => {
-            let isBlocked = false;
             if (response && response.isActive !== undefined) {
                 isActive = response.isActive;
             }
@@ -655,8 +708,18 @@ function init() {
     });
 }
 
+function removeBlockedBanner() {
+    const banner = document.getElementById("factshield-blocked-banner");
+    if (banner) {
+        banner.remove();
+        document.body.style.marginTop = "";
+    }
+}
+
 function showBlockedBanner() {
+    if (document.getElementById("factshield-blocked-banner")) return;
     const banner = document.createElement("div");
+    banner.id = "factshield-blocked-banner";
     banner.style.cssText = `
         position: fixed;
         top: 0;
@@ -679,7 +742,9 @@ function showBlockedBanner() {
 
 // Watch for new content (social feeds, infinite scroll, etc.)
 function setupObserver() {
-    const observer = new MutationObserver((mutations) => {
+    if (pageObserver) return;
+
+    pageObserver = new MutationObserver((mutations) => {
         if (!isActive || isScanning || highlightsApplied >= MAX_HIGHLIGHTS_PER_PAGE) return;
 
         let addedNodes = [];
@@ -697,7 +762,13 @@ function setupObserver() {
         }
     });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    pageObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function stopObserver() {
+    if (!pageObserver) return;
+    pageObserver.disconnect();
+    pageObserver = null;
 }
 
 // Scan page → extract candidate sentences → process
@@ -749,11 +820,23 @@ function evaluateNode(node, candidates) {
     const text = node.nodeValue.trim();
     if (text.length < MIN_SENTENCE_LENGTH) return;
 
+    // Fast path: check if any sentence matches a known local pattern
+    let localCacheHit = false;
+    const sentences = splitIntoSentences(text);
+    for (const sentence of sentences) {
+        if (hasLocalCacheMatch(sentence)) {
+            localCacheHit = true;
+            break;
+        }
+    }
+
     const analysis = analyzeHeuristicSignals(text);
     const score = analysis.score;
 
-    if (score >= CLAIM_SCORE_THRESHOLD) {
-        candidates.push({ node, text, score });
+    // Allow node if it matches local cache OR meets generic threshold
+    if (localCacheHit || score >= CLAIM_SCORE_THRESHOLD) {
+        const effectiveScore = localCacheHit ? Math.max(score, CLAIM_SCORE_THRESHOLD + 1) : score;
+        candidates.push({ node, text, score: effectiveScore });
     }
 }
 
@@ -818,6 +901,22 @@ function processClaim(textNode, fullText) {
             highlightClaim(parentEl, sentence, generic, "generic", claimKey);
         }
     }
+}
+
+function hasLocalCacheMatch(sentence) {
+    if (!window.factCache) return false;
+
+    for (const item of window.factCache) {
+        const keywordHits = getKeywordHits(sentence, item.keywords);
+        const patternMatch = item.pattern ? sentence.match(item.pattern) : null;
+        const keywordThreshold = Math.min(2, item.keywords?.length || 0);
+        const hasKeywordSupport = keywordHits.length >= keywordThreshold || (keywordHits.length > 0 && !!patternMatch);
+
+        if (patternMatch || hasKeywordSupport) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function checkLocalCache(sentence, analysis) {
