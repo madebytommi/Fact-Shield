@@ -397,7 +397,7 @@ function splitIntoSentences(text, minimumLength = MIN_SENTENCE_LENGTH) {
         .replace(/\b(?:[A-Za-z]\.){2,}/g, (match) => match.replace(/\./g, "__DOT__"))
         .replace(/\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Mt|Gen|Sen|Rep|Gov|Lt|Col|Capt|Cmdr|Sgt|Adm|Maj|Ave|Blvd|Rd|No|Nos|Dept|Univ|Inc|Ltd|Co|Corp|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|etc|vs|e\.g|i\.e)\./gi, (match) => match.replace(/\./g, "__DOT__"))
         .replace(/(\d)\.(\d)/g, "$1__DECIMAL__$2")
-        .replace(/(^|\s)(\d+)\.(?=\s+[A-Z])/g, "$1$2__LIST__");
+        .replace(/(^|\s)(\d{1,3})\.(?=\s+[A-Z])/g, "$1$2__LIST__");
 
     const fragments = protectedText.match(/.+?(?:[.!?]+(?=(?:["')\]]*\s+|$))|$)/g) || [];
 
