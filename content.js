@@ -797,6 +797,10 @@ function processClaim(textNode, fullText) {
             continue; // we highlighted — move to next sentence
         }
 
+        if (analysis.score < CLAIM_SCORE_THRESHOLD) {
+            continue; // skip low-signal sentences inside high-signal text nodes
+        }
+
         // Send to background for Google Fact Check API
         const sent = sendRuntimeMessage({ action: "checkClaim", sentence }, (response) => {
             if (response?.match) {
